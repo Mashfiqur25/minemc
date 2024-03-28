@@ -14,7 +14,7 @@ class MinecraftBot {
     // Init bot instance
     async initBot() {
         // Initialize bot
-        const mineflayer = await import('mineflayer');
+        const mineflayer = require('mineflayer');
         this.bot = mineflayer.createBot({
             username: this.username,
             host: this.host,
@@ -58,6 +58,14 @@ class MinecraftBot {
         // Event handler for errors
         this.bot.on('error', (err) => {
             this.log('Bot error:', err);
+        });
+        
+         // Anti-AFK system
+        this.bot.on('physicTick', () => {
+            this.bot.setControlState('jump', true);
+            setTimeout(() => {
+                this.bot.setControlState('jump', false);
+            }, 500);
         });
     }
 
