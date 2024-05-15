@@ -1,3 +1,22 @@
+const http = require("http");
+
+const server = http.createServer((req, res) => {
+  res.setHeader("Content-Type", "text/html");
+  res.end(`
+    <html>
+      <head>
+        <title>Your Web View</title>
+      </head>
+      <body style="margin: 0; padding: 0;">
+        <iframe width="100%" height="100%" src="https://axocoder.vercel.app/" frameborder="0" allowfullscreen></iframe>
+      </body>
+    </html>`);
+});
+
+server.listen(3000, () => {
+  console.log("Server Online because of Axo Coder ✅!!");
+});
+
 const readline = require('readline');
 const dns = require('dns');
 
@@ -8,7 +27,8 @@ class MinecraftBot {
         this.port = port;
         this.version = version;
         this.bot = null;
-        this.rl = null; // Added readline interface property
+        this.rl = null;
+        this.reconnectInterval = 5000; // Reconnection interval in milliseconds
     }
 
     // Init bot instance
@@ -24,6 +44,14 @@ class MinecraftBot {
 
         // Initialize bot events
         this.initEvents();
+
+        // Handle bot disconnections
+        this.bot.on('end', () => {
+            this.log('Bot disconnected. Attempting to reconnect...');
+            setTimeout(() => {
+                this.initBot(); // Attempt to reconnect after a delay
+            }, this.reconnectInterval);
+        });
     }
 
     // Logger
@@ -60,7 +88,7 @@ class MinecraftBot {
             this.log('Bot error:', err);
         });
         
-         // Anti-AFK system
+        // Anti-AFK system
         this.bot.on('physicTick', () => {
             this.bot.setControlState('jump', true);
             setTimeout(() => {
