@@ -1,39 +1,21 @@
-const http = require("http");
-
-const server = http.createServer((req, res) => {
-  res.setHeader("Content-Type", "text/html");
-  res.end(`
-    <html>
-      <head>
-        <title>Your Web View</title>
-      </head>
-      <body style="margin: 0; padding: 0;">
-        <iframe width="100%" height="100%" src="https://axocoder.vercel.app/" frameborder="0" allowfullscreen></iframe>
-      </body>
-    </html>`);
-});
-
-server.listen(3000, () => {
-  console.log("Server Online because of Axo Coder ✅!!");
-});
-
 const readline = require('readline');
 const dns = require('dns');
 
 class MinecraftBot {
-    constructor(username, host, port, version) {
+    constructor(username, host, port, version, connectCommand) {
         this.username = username;
         this.host = host;
         this.port = port;
         this.version = version;
+        this.connectCommand = connectCommand;
         this.bot = null;
         this.rl = null;
         this.reconnectInterval = 5000; // Reconnection interval in milliseconds
+        this.moveDirection = true; // Toggle for left-right movement
     }
 
     // Init bot instance
     async initBot() {
-        // Initialize bot
         const mineflayer = require('mineflayer');
         this.bot = mineflayer.createBot({
             username: this.username,
@@ -42,14 +24,12 @@ class MinecraftBot {
             version: this.version
         });
 
-        // Initialize bot events
         this.initEvents();
 
-        // Handle bot disconnections
         this.bot.on('end', () => {
             this.log('Bot disconnected. Attempting to reconnect...');
             setTimeout(() => {
-                this.initBot(); // Attempt to reconnect after a delay
+                this.initBot();
             }, this.reconnectInterval);
         });
     }
@@ -76,30 +56,38 @@ class MinecraftBot {
 
     // Initialize bot events
     initEvents() {
-        // Event handler for receiving all in-game messages
+        this.bot.on('login', () => {
+            this.log('Bot connected successfully.');
+            this.sendChatMessage(this.connectCommand); // Send the specified command on connection
+        });
+
         this.bot.on('message', (message) => {
             const username = message.toAnsi();
             const content = message.toString().substr(username.length + 1);
             this.chatLog(username, content);
         });
 
-        // Event handler for errors
         this.bot.on('error', (err) => {
             this.log('Bot error:', err);
         });
         
-        // Anti-AFK system
+        // Auto-move left and right while jumping
         this.bot.on('physicTick', () => {
-            this.bot.setControlState('jump', true);
+            this.bot.setControlState('jump', true); // Start jumping
+            this.bot.setControlState('left', this.moveDirection); // Move left
+            this.bot.setControlState('right', !this.moveDirection); // Move right
+            
             setTimeout(() => {
-                this.bot.setControlState('jump', false);
+                this.bot.setControlState('jump', false); // Stop jumping after a short delay
             }, 500);
+
+            // Toggle the direction for left-right movement
+            this.moveDirection = !this.moveDirection;
         });
     }
 
     // Connect to the server
-    async connectToServer(domain, password) {
-        // Resolve domain to IP address
+    async connectToServer(domain) {
         dns.resolve4(domain, async (err, addresses) => {
             if (err) {
                 this.log('Error resolving domain:', err);
@@ -111,12 +99,8 @@ class MinecraftBot {
                 return;
             }
 
-            const serverAddress = addresses[0];
-            
-            // Set up bot and events
             await this.initBot();
 
-            // Initialize readline interface after bot initialization
             this.initReadline();
         });
     }
@@ -128,30 +112,25 @@ class MinecraftBot {
             output: process.stdout
         });
 
-        // Listen for console input
         this.rl.on('line', (input) => {
-            // Send the input as a chat message
             this.sendChatMessage(input);
         });
     }
 }
 
-// Create a new instance of MinecraftBot
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 
-// Prompt for server details
 rl.question('Enter server domain: ', (domain) => {
-    rl.question('Enter your Minecraft username: ', (username) => {
-        rl.question('Enter the server port: ', (port) => {
+    rl.question('Enter the server port: ', (port) => {
+        rl.question('Enter your Minecraft username: ', (username) => {
             rl.question('Enter Minecraft version: ', (version) => {
-                rl.question('Enter your Minecraft password (leave empty for offline/cracked accounts): ', (password) => {
+                rl.question('Enter the chat/command to send upon connection: ', (connectCommand) => {
                     rl.close();
-                    // Connect to the server
-                    const bot = new MinecraftBot(username, domain, port, version);
-                    bot.connectToServer(domain, password);
+                    const bot = new MinecraftBot(username, domain, port, version, connectCommand);
+                    bot.connectToServer(domain);
                 });
             });
         });
