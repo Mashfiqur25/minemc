@@ -11,7 +11,7 @@ class MinecraftBot {
         this.bot = null;
         this.rl = null;
         this.reconnectInterval = 5000; // Reconnection interval in milliseconds
-        this.moveDirection = true; // Toggle for left-right movement
+        this.movingLeft = true; // Start direction
     }
 
     // Init bot instance
@@ -70,20 +70,24 @@ class MinecraftBot {
         this.bot.on('error', (err) => {
             this.log('Bot error:', err);
         });
-        
-        // Auto-move left and right while jumping
-        this.bot.on('physicTick', () => {
-            this.bot.setControlState('jump', true); // Start jumping
-            this.bot.setControlState('left', this.moveDirection); // Move left
-            this.bot.setControlState('right', !this.moveDirection); // Move right
-            
-            setTimeout(() => {
-                this.bot.setControlState('jump', false); // Stop jumping after a short delay
-            }, 500);
 
-            // Toggle the direction for left-right movement
-            this.moveDirection = !this.moveDirection;
-        });
+        // Anti-AFK movement (left-right movement with random direction change)
+        this.startAntiAfkMovement();
+    }
+
+    // Anti-AFK left-right movement with random direction changes
+    startAntiAfkMovement() {
+        setInterval(() => {
+            // Randomly change direction every few seconds
+            this.movingLeft = Math.random() > 0.5;
+            if (this.movingLeft) {
+                this.bot.setControlState('right', false);
+                this.bot.setControlState('left', true);
+            } else {
+                this.bot.setControlState('left', false);
+                this.bot.setControlState('right', true);
+            }
+        }, 1000); // Adjust the interval for smoother or more delayed movement
     }
 
     // Connect to the server
